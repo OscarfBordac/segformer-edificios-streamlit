@@ -111,8 +111,10 @@ with st.sidebar:
     if resolved_pth.is_file():
         file_size_mb = resolved_pth.stat().st_size / (1024 * 1024)
         st.success(f"Checkpoint cargado: `{resolved_pth.name}` ({file_size_mb:.1f} MB)")
+    elif CONFIG.get("model_download_url"):
+        st.info("☁️ Checkpoint en Hugging Face. Se descargará automáticamente al iniciar la primera detección.")
     else:
-        st.warning("⚠️ Checkpoint no encontrado localmente. Se verificará en inferencia.")
+        st.warning("⚠️ Checkpoint no encontrado localmente ni configurado en Hugging Face.")
 
 # ============================================================
 # CUERPO PRINCIPAL DE LA APLICACIÓN
