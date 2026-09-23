@@ -1,0 +1,21 @@
+{
+  "architecture": "SegFormer",
+  "encoder": "mit_b2",
+  "encoder_weights": null,
+  "num_classes": 2,
+  "classes": [
+    "background",
+    "building"
+  ],
+  "input_size": 256,
+  "stride": 192,
+  "tta": true,
+  "threshold": 0.35,
+  "model_path": "model/segformer_mit_b2_tileado_edificios_best.pth",
+  "model_download_url": "",
+  "preprocessing": {
+    "type": "segmentation_models_pytorch",
+    "encoder": "mit_b2",
+    "weights": "imagenet"
+  }
+}

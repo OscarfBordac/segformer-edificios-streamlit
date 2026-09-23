@@ -1,0 +1,52 @@
+# Python & Entornos Virtuales
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Jupyter & IDEs
+.ipynb_checkpoints
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Archivos GeoTIFF de prueba y salidas locales
+*.tif
+*.tiff
+!data/*.tif
+!data/*.tiff
+
+# Archivos de pesos grandes (alojados en Hugging Face)
+model/*.pth
+*.pth
