@@ -8,7 +8,7 @@ import streamlit as st
 import torch
 import numpy as np
 
-from src.model import load_segformer_model, resolve_model_path
+from src.model import load_segformer_model, resolve_model_path, download_model_if_needed
 from src.geotiff import (
     read_geotiff_data,
     export_binary_mask,
@@ -29,7 +29,6 @@ ROOT_CONFIG_PATH = APP_DIR / "config.json"
 MODEL_CONFIG_PATH = APP_DIR / "model" / "config.json"
 
 
-@st.cache_data
 def load_application_config() -> dict:
     """Carga el archivo de configuración unificado con fallback."""
     config_file = ROOT_CONFIG_PATH if ROOT_CONFIG_PATH.exists() else MODEL_CONFIG_PATH
@@ -108,11 +107,21 @@ with st.sidebar:
     # Estado del checkpoint
     st.markdown("---")
     resolved_pth = resolve_model_path(CONFIG.get("model_path"))
+    download_url = CONFIG.get("model_download_url", "").strip()
+
     if resolved_pth.is_file():
         file_size_mb = resolved_pth.stat().st_size / (1024 * 1024)
         st.success(f"Checkpoint cargado: `{resolved_pth.name}` ({file_size_mb:.1f} MB)")
-    elif CONFIG.get("model_download_url"):
-        st.info("☁️ Checkpoint en Hugging Face. Se descargará automáticamente al iniciar la primera detección.")
+    elif download_url:
+        st.info("☁️ Checkpoint configurado en Hugging Face.")
+        if st.button("📥 Descargar Modelo Ahora (~94 MB)", use_container_width=True):
+            with st.spinner("Descargando modelo desde Hugging Face... Por favor espera unos segundos."):
+                success, msg = download_model_if_needed(resolved_pth, download_url)
+                if success:
+                    st.success("¡Modelo descargado exitosamente!")
+                    st.rerun()
+                else:
+                    st.error(f"Error al descargar: {msg}")
     else:
         st.warning("⚠️ Checkpoint no encontrado localmente ni configurado en Hugging Face.")
 
@@ -161,6 +170,20 @@ if uploaded_file is not None:
             # Sobrescribir threshold con el seleccionado por el usuario en la sesión
             inference_config = CONFIG.copy()
             inference_config["threshold"] = selected_threshold
+
+            # Asegurar descarga del modelo si aún no existe en disco
+            resolved_pth = resolve_model_path(inference_config.get("model_path"))
+            if not resolved_pth.is_file():
+                download_url = inference_config.get("model_download_url", "").strip()
+                if not download_url:
+                    st.error("No se encontró el checkpoint y no hay 'model_download_url' en config.json.")
+                    st.stop()
+                with st.spinner("Descargando modelo SegFormer desde Hugging Face (~94 MB)... Esto tomará unos segundos la primera vez."):
+                    success, msg = download_model_if_needed(resolved_pth, download_url)
+                    if not success:
+                        st.error(f"No se pudo descargar el modelo desde Hugging Face: {msg}")
+                        st.stop()
+                    st.success("¡Modelo descargado exitosamente!")
 
             # Carga del modelo
             try:

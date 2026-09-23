@@ -45,17 +45,17 @@ def resolve_model_path(configured_path: str = None) -> Path:
     return default_in_model
 
 
-def download_model_if_needed(target_path: Path, download_url: str = None) -> bool:
+def download_model_if_needed(target_path: Path, download_url: str = None) -> tuple[bool, str]:
     """
-    Si el archivo .pth no existe y se ha proporcionado una URL de descarga válida
-    (por ejemplo, un enlace directo de Hugging Face o GitHub Releases),
+    Si el archivo .pth no existe y se ha proporcionado una URL de descarga válida,
     descarga el checkpoint automáticamente de forma segura.
+    Retorna (éxito: bool, mensaje: str).
     """
     if target_path.is_file() and target_path.stat().st_size > 1000:
-        return True
+        return True, "El archivo ya existe y es válido."
 
     if not download_url or not download_url.strip():
-        return False
+        return False, "No se proporcionó una URL de descarga en 'model_download_url'."
 
     download_url = download_url.strip()
     target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,7 +66,7 @@ def download_model_if_needed(target_path: Path, download_url: str = None) -> boo
 
     try:
         import requests
-        with requests.get(download_url, stream=True, headers=headers, timeout=60) as r:
+        with requests.get(download_url, stream=True, headers=headers, timeout=120) as r:
             r.raise_for_status()
             with open(temp_target, "wb") as f:
                 for chunk in r.iter_content(chunk_size=1024 * 1024):
@@ -75,12 +75,12 @@ def download_model_if_needed(target_path: Path, download_url: str = None) -> boo
         if temp_target.is_file() and temp_target.stat().st_size > 1000:
             temp_target.replace(target_path)
             print(f"Checkpoint descargado exitosamente en: {target_path}")
-            return True
+            return True, "Descarga completada con éxito."
     except Exception as e_req:
         print(f"Intento con requests falló ({e_req}). Probando con urllib...")
         try:
             req = urllib.request.Request(download_url, headers=headers)
-            with urllib.request.urlopen(req, timeout=60) as response, open(temp_target, "wb") as out_file:
+            with urllib.request.urlopen(req, timeout=120) as response, open(temp_target, "wb") as out_file:
                 while True:
                     chunk = response.read(1024 * 1024)
                     if not chunk:
@@ -89,14 +89,15 @@ def download_model_if_needed(target_path: Path, download_url: str = None) -> boo
             if temp_target.is_file() and temp_target.stat().st_size > 1000:
                 temp_target.replace(target_path)
                 print(f"Checkpoint descargado exitosamente en: {target_path}")
-                return True
+                return True, "Descarga completada con éxito."
         except Exception as e_url:
-            print(f"Error definitivo al descargar checkpoint: {e_url}")
+            err_msg = f"Error con requests: {e_req} | Error con urllib: {e_url}"
+            print(f"Error definitivo al descargar checkpoint: {err_msg}")
             if temp_target.exists():
                 temp_target.unlink()
-            return False
+            return False, err_msg
 
-    return False
+    return False, "Error desconocido durante la descarga."
 
 
 def load_segformer_model(config: dict, device: torch.device = None) -> torch.nn.Module:
@@ -111,12 +112,14 @@ def load_segformer_model(config: dict, device: torch.device = None) -> torch.nn.
     if not model_path.is_file():
         # Intentar descarga si hay URL disponible
         download_url = config.get("model_download_url", "").strip()
-        downloaded = download_model_if_needed(model_path, download_url)
+        downloaded, err_msg = download_model_if_needed(model_path, download_url)
         if not downloaded or not model_path.is_file():
             raise FileNotFoundError(
-                f"No se encontró el checkpoint del modelo en:\n{model_path}\n\n"
-                "Asegúrate de colocar el archivo 'segformer_mit_b2_tileado_edificios_best.pth' "
-                "dentro del directorio 'model/' o configurar una URL de descarga en 'config.json'."
+                f"No se encontró el checkpoint del modelo en:\n{model_path}\n"
+                f"URL intentada: '{download_url}'\n"
+                f"Diagnóstico: {err_msg}\n\n"
+                "Asegúrate de colocar 'segformer_mit_b2_tileado_edificios_best.pth' "
+                "en 'model/' o configurar una URL pública válida en 'config.json'."
             )
 
     encoder_name = config.get("encoder", "mit_b2")
