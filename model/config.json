@@ -10,6 +10,7 @@
   "stride": 192,
   "tta": true,
   "threshold": 0.35,
+  "model_download_url": "https://huggingface.co/oscarfbordac/segformer-mit-b2-edificios/resolve/main/segformer_mit_b2_tileado_edificios_best.pth",
   "preprocessing": {
     "type": "segmentation_models_pytorch",
     "encoder": "mit_b2",
